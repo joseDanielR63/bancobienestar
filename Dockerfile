@@ -1,32 +1,30 @@
 FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 
-# Copiar archivos de Maven wrapper
+# Copiar archivos del proyecto
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
+COPY src src
+
+# Dar permisos de ejecución al Maven Wrapper
+RUN chmod +x ./mvnw
 
 # Descargar dependencias (capa cacheable)
 RUN ./mvnw dependency:go-offline
 
-# Copiar código fuente y compilar
-COPY src src
+# Compilar la aplicación
 RUN ./mvnw clean package -DskipTests
 
-# Etapa de ejecución - USAR JRE
+# Etapa de ejecución
 FROM eclipse-temurin:21-jre-alpine
-# Si no funciona, usar: FROM eclipse-temurin:21-jdk-alpine
-
 WORKDIR /app
 
-# Copiar JAR desde la etapa de construcción
+# Copiar el JAR desde la etapa de construcción
 COPY --from=builder /app/target/*.jar app.jar
 
-# Crear usuario no-root para seguridad (opcional)
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
+# Puerto de la aplicación
 EXPOSE 8080
 
-# Mejor entrypoint con opciones de memoria
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-jar", "app.jar"]
+# Ejecutar la aplicación
+ENTRYPOINT ["java", "-jar", "app.jar"]
