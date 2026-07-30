@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Cuentas - Banco Bienestar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background: #f5f7fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-weight: 300; margin: 0; }
+        .header .subtitle { font-weight: 300; opacity: 0.8; }
+        .card-resumen {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .card-resumen:hover { transform: translateY(-3px); }
+        .card-resumen .card-body { padding: 1.5rem; }
+        .card-resumen .icon { font-size: 2rem; opacity: 0.3; }
+        .card-resumen .numero { font-size: 1.8rem; font-weight: 600; color: #1e3c72; }
+        .table-cuentas {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .table-cuentas thead { background: #f8f9fa; }
+        .table-cuentas th { font-weight: 600; color: #1e3c72; border-bottom: 2px solid #dee2e6; }
+        .table-cuentas td { vertical-align: middle; }
+        .badge-clabe {
+            font-family: monospace;
+            background: #e9ecef;
+            color: #1e3c72;
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .btn-accion {
+            border-radius: 2rem;
+            padding: 0.3rem 1rem;
+            font-size: 0.85rem;
+        }
+        .saldo-positivo { color: #28a745; font-weight: 600; }
+        .saldo-negativo { color: #dc3545; font-weight: 600; }
+        /* Badges para tipo de cuenta */
+        .badge-ahorro { background: #d4edda; color: #155724; }
+        .badge-corriente { background: #cce5ff; color: #004085; }
+        .badge-inversion { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="bi bi-bank me-2"></i>Banco Bienestar</h1>
+                    <div class="subtitle">Bienvenido, <span th:text="${nombreCliente}">Usuario</span></div>
+                </div>
+                <div>
+                    <a href="/logout" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Tarjetas de resumen -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card card-resumen">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <small class="text-muted">Saldo total</small>
+                                <div class="numero">
+                                    $ <span th:text="${#numbers.formatDecimal(saldoTotal, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+                                </div>
+                            </div>
+                            <div class="icon"><i class="bi bi-wallet2"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-resumen">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <small class="text-muted">CLABE principal</small>
+                                <div class="numero" style="font-size:1.2rem; font-family:monospace;" th:text="${cuentaClabe}">000000000000000000</div>
+                            </div>
+                            <div class="icon"><i class="bi bi-credit-card"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-resumen">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <small class="text-muted">Número de cuentas</small>
+                                <div class="numero" th:text="${#lists.size(cuentas)}">0</div>
+                            </div>
+                            <div class="icon"><i class="bi bi-list-ul"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de cuentas -->
+        <div class="table-cuentas p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2"></i>Mis cuentas</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaCuenta">
+                    <i class="bi bi-plus-circle"></i> Nueva cuenta
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>CLABE</th>
+                            <th>Tipo</th>
+                            <th>Saldo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="cuenta, iter : ${cuentas}">
+                            <td th:text="${iter.index + 1}">1</td>
+                            <td><span class="badge-clabe" th:text="${cuenta.clabe}">000000000000000000</span></td>
+                            <td>
+                                <!-- Badge con lógica de tipo, ahora en una sola línea -->
+                                <span th:class="${cuenta.tipo == 'Ahorro'} ? 'badge badge-ahorro' : 
+                                                   (${cuenta.tipo == 'Corriente'} ? 'badge badge-corriente' : 'badge badge-inversion')"
+                                      th:text="${cuenta.tipo}">Ahorro</span>
+                            </td>
+                            <td>
+                                <span th:classappend="${cuenta.saldo >= 0} ? 'saldo-positivo' : 'saldo-negativo'"
+                                      th:text="${#numbers.formatDecimal(cuenta.saldo, 1, 'COMMA', 2, 'POINT')}">
+                                    0.00
+                                </span>
+                            </td>
+                            <td>
+                                <a th:href="@{/cuentas/{id}/movimientos(id=${cuenta.id})}" 
+                                   class="btn btn-outline-primary btn-accion btn-sm">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+                                <button class="btn btn-outline-success btn-accion btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalTransferir"
+                                        th:data-id="${cuenta.id}"
+                                        th:data-clabe="${cuenta.clabe}">
+                                    <i class="bi bi-arrow-right"></i> Transferir
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(cuentas)}">
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                No tienes cuentas asociadas
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modales (simples) -->
+    <div class="modal fade" id="modalNuevaCuenta" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva cuenta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/cuentas/nueva}" method="post">
+                    <div class="modal-body">
+                        <p>¿Deseas crear una nueva cuenta de débito?</p>
+                        <p class="text-muted small">La CLABE se generará automáticamente.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear cuenta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTransferir" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Transferir desde cuenta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/cuentas/transferir}" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Cuenta origen</label>
+                            <input type="text" class="form-control" id="clabeOrigen" readonly>
+                            <input type="hidden" name="cuentaOrigenId" id="cuentaOrigenId">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cuenta destino (CLABE)</label>
+                            <input type="text" class="form-control" name="clabeDestino" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Monto</label>
+                            <input type="number" step="0.01" class="form-control" name="monto" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Transferir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const modalTransferir = document.getElementById('modalTransferir');
+            modalTransferir.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const clabe = button.getAttribute('data-clabe');
+                const cuentaId = button.getAttribute('data-id');
+                document.getElementById('clabeOrigen').value = clabe;
+                document.getElementById('cuentaOrigenId').value = cuentaId;
+            });
+        });
+    </script>
+
+</body>
+</html>

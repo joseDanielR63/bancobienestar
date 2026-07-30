@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout('Solicitar Crédito', ~{::section})}">
+
+<head>
+    <title>Solicitar Crédito</title>
+</head>
+
+<body>
+    <section>
+        <!-- ====== ESTILOS DENTRO DEL CONTENIDO (IGUAL QUE DASHBOARD) ====== -->
+        <style>
+            .saldo-positivo { color: #28a745; font-weight: 600; }
+            .saldo-negativo { color: #dc3545; font-weight: 600; }
+            .card { margin-bottom: 20px; border-radius: 1rem; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+            .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
+            .badge-estado {
+                font-size: 0.7rem;
+                padding: 0.3rem 0.7rem;
+                border-radius: 2rem;
+                font-weight: 500;
+            }
+            .badge-estado.aprobado { background: #d4edda; color: #155724; }
+            .badge-estado.pendiente { background: #fff3cd; color: #856404; }
+            .badge-estado.rechazado { background: #f8d7da; color: #721c24; }
+
+            /* ====== TARJETA ESTILO BBVA (IGUAL QUE DASHBOARD) ====== */
+            .tarjeta {
+                width: 100%;
+                max-width: 420px;
+                min-height: 240px;
+                background: #2f1a7a !important;
+                background: linear-gradient(135deg, #3f259e, #411d83) !important;
+                color: #ffffff !important;
+                border-radius: 20px !important;
+                padding: 22px 28px !important;
+                box-shadow: 0 12px 30px rgba(26, 122, 58, 0.4) !important;
+                position: relative;
+                margin: 0 auto;
+                transition: transform 0.25s ease;
+                border: 1px solid rgba(255,255,255,0.1);
+            }
+            .tarjeta:hover { transform: translateY(-4px); }
+            .tarjeta .logo {
+                font-size: 22px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                opacity: 0.95;
+            }
+            .tarjeta .chip {
+                width: 48px;
+                height: 32px;
+                background: #ffd700;
+                border-radius: 6px;
+                margin: 16px 0 14px;
+                box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            }
+            .tarjeta .numero {
+                font-size: 22px;
+                letter-spacing: 3px;
+                font-family: 'Courier New', monospace;
+                margin-bottom: 18px;
+                background: rgba(255,255,255,0.08);
+                padding: 4px 12px;
+                border-radius: 30px;
+                display: inline-block;
+            }
+            .tarjeta .info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+            }
+            .tarjeta .info small {
+                opacity: 0.7;
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .tarjeta .info strong {
+                font-size: 1rem;
+                font-weight: 600;
+                display: block;
+                margin-top: 2px;
+            }
+            .tarjeta .saldo {
+                position: absolute;
+                bottom: 22px;
+                right: 28px;
+                text-align: right;
+            }
+            .tarjeta .saldo small {
+                opacity: 0.7;
+                font-size: 0.65rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                display: block;
+            }
+            .tarjeta .saldo h2 {
+                margin: 0;
+                font-size: 1.9rem;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }
+
+            /* ====== CANVAS FIRMA ====== */
+            #firmaPad {
+                border: 2px dashed #dee2e6;
+                border-radius: 1rem;
+                background: #f8f9fa;
+                width: 100%;
+                height: 200px;
+                touch-action: none;
+                cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="black"><circle cx="12" cy="12" r="4"/></svg>') 12 12, auto;
+            }
+            #firmaPad.dibujando {
+                border-color: #28a745;
+                background: #f0fff4;
+            }
+            .btn-credito {
+                background: linear-gradient(135deg, #28a745, #1a7a3a);
+                border: none;
+                padding: 0.6rem 1.5rem;
+                font-weight: 600;
+            }
+            .btn-credito:hover {
+                background: linear-gradient(135deg, #218838, #1a6e2e);
+            }
+            .btn-limpiar {
+                background: #6c757d;
+                border: none;
+                color: white;
+                padding: 0.4rem 1rem;
+                border-radius: 0.5rem;
+                font-size: 0.8rem;
+            }
+            .btn-limpiar:hover {
+                background: #5a6268;
+                color: white;
+            }
+
+            /* ====== HISTORIAL ====== */
+            .historial-card {
+                background: #f8f9fa;
+                border-radius: 0.8rem;
+                padding: 0.8rem 1rem;
+                margin-bottom: 0.8rem;
+                border-left: 4px solid #1e3c72;
+            }
+            .historial-card .monto {
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+            .historial-card .fecha {
+                font-size: 0.75rem;
+                color: #6c757d;
+            }
+            .firma-img {
+                max-height: 50px;
+                object-fit: contain;
+                max-width: 100%;
+                background: white;
+                border-radius: 0.3rem;
+                padding: 0.2rem;
+                border: 1px solid #dee2e6;
+            }
+        </style>
+
+        <!-- ====== TÍTULO CON ROL ====== -->
+        <div class="row">
+            <div class="col-12">
+                <h1>
+                    <span th:if="${#authorization.expression('hasRole(''CLIENTE'')')}">
+                        Solicitar Crédito <small class="text-muted" style="font-size: 0.6em;">Cliente</small>
+                    </span>
+                    <span th:if="${#authorization.expression('hasRole(''EJECUTIVO'')')}">
+                        Solicitar Crédito <small class="text-muted" style="font-size: 0.6em;">Ejecutivo</small>
+                    </span>
+                </h1>
+                <hr>
+            </div>
+        </div>
+
+        <!-- ====== ALERTAS ====== -->
+        <div th:if="${param.exito}" class="alert alert-success d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-check fs-5"></i>
+            <span th:text="${param.exito}">Operación exitosa</span>
+        </div>
+        <div th:if="${param.error}" class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-exclamation fs-5"></i>
+            <span th:text="${param.error}">Error en la operación</span>
+        </div>
+
+        <!-- ====== FILA: FORMULARIO + HISTORIAL ====== -->
+        <div class="row">
+            <!-- COLUMNA IZQUIERDA: FORMULARIO (igual que las tarjetas del dashboard) -->
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header"><h5><i class="fas fa-file-signature me-2"></i>Datos de la Solicitud</h5></div>
+                    <div class="card-body">
+                        <form id="formCredito" th:action="@{/procesar-credito}" method="post" onsubmit="return prepararEnvioForm()">
+                            <!-- Monto -->
+                            <div class="mb-3">
+                                <label for="monto" class="form-label fw-bold">Monto a solicitar</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="100" min="100" class="form-control"
+                                           id="monto" name="monto" placeholder="Ej: 5000" required>
+                                </div>
+                                <div class="form-text">Monto mínimo: $100.00</div>
+                            </div>
+
+                            <!-- Firma digital con Canvas -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Firma Digital</label>
+                                <div class="text-muted small mb-2">
+                                    <i class="fas fa-pen me-1"></i> Dibuja tu firma en el recuadro
+                                </div>
+                                <canvas id="firmaPad" class="w-100"></canvas>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button type="button" class="btn btn-limpiar" onclick="limpiarFirma()">
+                                        <i class="fas fa-eraser me-1"></i>Limpiar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="confirmarFirmaCapturada()">
+                                        <i class="fas fa-check me-1"></i>Confirmar Firma
+                                    </button>
+                                </div>
+                                <div class="form-text">Dibuja tu firma con el mouse o dedo (en móvil).</div>
+                                <!-- Campo oculto para enviar la firma en base64 -->
+                                <input type="hidden" id="firmaBase64" name="firmaBase64" value="">
+                            </div>
+
+                            <!-- Botón enviar -->
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="submit" class="btn btn-success btn-credito">
+                                    <i class="fas fa-paper-plane me-2"></i>Solicitar Crédito
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: HISTORIAL (igual estilo que las tarjetas del dashboard) -->
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header"><h5><i class="fas fa-clock-rotate-left me-2"></i>Historial de Créditos</h5></div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Sin solicitudes -->
+                        <div th:if="${#lists.isEmpty(solicitudes)}" class="text-center py-4">
+                            <i class="fa-solid fa-folder-open fs-2 text-muted mb-2 d-block"></i>
+                            <h6 class="text-muted fw-normal">Aún no has solicitado créditos.</h6>
+                        </div>
+
+                        <!-- Lista de solicitudes -->
+                        <div th:if="${not #lists.isEmpty(solicitudes)}" class="d-flex flex-column gap-2">
+                            <div th:each="sol : ${solicitudes}" class="historial-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="monto" th:text="'$' + ${#numbers.formatDecimal(sol.montoSolicitado, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    <span class="badge-estado"
+                                          th:classappend="${sol.estado == 'APROBADO'} ? 'aprobado' : (${sol.estado == 'PENDIENTE'} ? 'pendiente' : 'rechazado')"
+                                          th:text="${sol.estado}">PENDIENTE</span>
+                                </div>
+                                <div class="fecha" th:text="${#temporals.format(sol.fecha, 'dd/MM/yyyy HH:mm')}">Fecha</div>
+                                <!-- Firma guardada -->
+                                <div th:if="${sol.firmaBase64 != null and sol.firmaBase64 != ''}" class="mt-2 pt-2 border-top">
+                                    <span class="text-muted small d-block mb-1" style="font-size: 0.6rem;">FIRMA DIGITAL:</span>
+                                    <img th:src="${sol.firmaBase64}" alt="Firma" class="firma-img">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== SCRIPT DE FIRMA (IGUAL QUE EL DEL DASHBOARD) ====== -->
+        <script>
+            (function() {
+                document.addEventListener('DOMContentLoaded', function() {
+                    const canvas = document.getElementById('firmaPad');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    let isDrawing = false;
+                    let trazadoRealizado = false;
+
+                    function ajustarCanvas() {
+                        const rect = canvas.getBoundingClientRect();
+                        canvas.width = rect.width || 400;
+                        canvas.height = 200;
+                        ctx.lineWidth = 3;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.strokeStyle = '#1e3c72';
+                    }
+
+                    window.addEventListener('resize', ajustarCanvas);
+                    ajustarCanvas();
+
+                    function obtenerCoordenadas(e) {
+                        const rect = canvas.getBoundingClientRect();
+                        let clientX, clientY;
+                        if (e.touches) {
+                            clientX = e.touches[0].clientX;
+                            clientY = e.touches[0].clientY;
+                            e.preventDefault();
+                        } else {
+                            clientX = e.clientX;
+                            clientY = e.clientY;
+                        }
+                        return { x: clientX - rect.left, y: clientY - rect.top };
+                    }
+
+                    function empezarDibujo(e) {
+                        isDrawing = true;
+                        canvas.classList.add('dibujando');
+                        const pos = obtenerCoordenadas(e);
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, pos.y);
+                    }
+
+                    function dibujar(e) {
+                        if (!isDrawing) return;
+                        const pos = obtenerCoordenadas(e);
+                        ctx.lineTo(pos.x, pos.y);
+                        ctx.stroke();
+                        trazadoRealizado = true;
+                    }
+
+                    function terminarDibujo() {
+                        isDrawing = false;
+                        canvas.classList.remove('dibujando');
+                    }
+
+                    canvas.addEventListener('mousedown', empezarDibujo);
+                    canvas.addEventListener('mousemove', dibujar);
+                    canvas.addEventListener('mouseup', terminarDibujo);
+                    canvas.addEventListener('mouseout', terminarDibujo);
+
+                    canvas.addEventListener('touchstart', empezarDibujo);
+                    canvas.addEventListener('touchmove', dibujar);
+                    canvas.addEventListener('touchend', terminarDibujo);
+
+                    // --- Funciones globales ---
+                    window.limpiarFirma = function() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        document.getElementById('firmaBase64').value = '';
+                        trazadoRealizado = false;
+                        canvas.classList.remove('dibujando');
+                    };
+
+                    window.confirmarFirmaCapturada = function() {
+                        if (!trazadoRealizado) {
+                            alert('⚠️ Por favor, dibuja tu firma en el recuadro primero.');
+                            return;
+                        }
+                        const base64 = canvas.toDataURL('image/png');
+                        document.getElementById('firmaBase64').value = base64;
+                        alert('✅ Firma digital validada e inyectada con éxito.');
+                    };
+
+                    window.prepararEnvioForm = function() {
+                        if (!trazadoRealizado) {
+                            alert('⚠️ Debes dibujar tu firma en el recuadro antes de enviar.');
+                            return false;
+                        }
+                        const base64 = canvas.toDataURL('image/png');
+                        document.getElementById('firmaBase64').value = base64;
+                        return true;
+                    };
+                });
+            })();
+        </script>
+    </section>
+</body>
+</html>

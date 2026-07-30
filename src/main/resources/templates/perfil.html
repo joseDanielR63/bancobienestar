@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout('Mi Perfil', ~{::section})}">
+
+<head>
+    <title>Mi Perfil</title>
+</head>
+
+<body>
+    <section>
+        <!-- ====== ESTILOS ====== -->
+        <style>
+            .card-perfil {
+                border-radius: 1rem;
+                border: none;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }
+            .card-perfil .card-header {
+                background: linear-gradient(135deg, #1e3c72, #2a5298);
+                color: white;
+                border-radius: 1rem 1rem 0 0;
+                padding: 1.2rem 1.5rem;
+            }
+            .card-perfil .card-header h5 {
+                margin: 0;
+                font-weight: 500;
+            }
+            .perfil-avatar {
+                width: 100px;
+                height: 100px;
+                border-radius: 50%;
+                background: #e9ecef;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 3rem;
+                color: #1e3c72;
+                margin: 0 auto 1rem auto;
+                border: 4px solid #1e3c72;
+            }
+        </style>
+
+        <!-- ====== ALERTAS ====== -->
+        <div th:if="${param.exito}" class="alert alert-success d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-check fs-5"></i>
+            <span th:text="${param.exito}">Operación exitosa</span>
+        </div>
+        <div th:if="${param.error}" class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-exclamation fs-5"></i>
+            <span th:text="${param.error}">Error en la operación</span>
+        </div>
+
+        <!-- ====== ENCABEZADO ====== -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-6 fw-bold text-primary">
+                    <i class="fas fa-user-circle me-2"></i>Mi Perfil
+                </h1>
+                <p class="text-muted">Actualiza tus datos personales</p>
+                <hr>
+            </div>
+        </div>
+
+        <!-- ====== FORMULARIO ====== -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card card-perfil">
+                    <div class="card-header">
+                        <h5><i class="fas fa-edit me-2"></i>Editar Datos</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="text-center">
+                            <div class="perfil-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <p class="text-muted small">
+                                <i class="fas fa-user-tag me-1"></i> Rol:
+                                <span class="badge bg-primary" sec:authentication="principal.authorities"
+                                      th:text="${#authentication.getAuthorities().isEmpty() ? '' : #authentication.getAuthorities().toArray()[0].getAuthority().replace('ROLE_', '')}">
+                                </span>
+                            </p>
+                        </div>
+
+                        <form th:action="@{/perfil/actualizar}" method="post">
+                            <!-- Usuario (solo lectura) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Nombre de Usuario</label>
+                                <input type="text" class="form-control" th:value="${usuario.username}" disabled>
+                                <div class="form-text">El nombre de usuario no se puede modificar.</div>
+                            </div>
+
+                            <!-- Nombre -->
+                            <div class="mb-3">
+                                <label for="nombre" class="form-label fw-bold">Nombre completo</label>
+                                <input type="text" class="form-control" id="nombre" name="nombre"
+                                       th:value="${usuario.nombre}" required>
+                            </div>
+
+                            <!-- Contraseña -->
+                            <div class="mb-3">
+                                <label for="nuevaPassword" class="form-label fw-bold">Nueva Contraseña</label>
+                                <input type="password" class="form-control" id="nuevaPassword" name="nuevaPassword"
+                                       placeholder="Dejar en blanco para no cambiar">
+                                <div class="form-text">Mínimo 4 caracteres.</div>
+                            </div>
+
+                            <!-- Botón -->
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Guardar Cambios
+                                </button>
+                                <a href="/dashboard" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== INFORMACIÓN ADICIONAL ====== -->
+        <div class="row mt-4">
+            <div class="col-12 text-center text-muted small">
+                <p>¿Problemas con tu cuenta? Contáctanos al <strong>800-123-4567</strong></p>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

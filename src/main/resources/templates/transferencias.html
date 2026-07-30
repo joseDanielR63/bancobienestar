@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout('Transferencias', ~{::section})}">
+
+<head>
+    <title>Transferencias</title>
+    <style>
+        .card-transferencia {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .card-transferencia .card-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            border-radius: 1rem 1rem 0 0;
+            padding: 1.2rem 1.5rem;
+        }
+        .card-transferencia .card-header h5 {
+            margin: 0;
+            font-weight: 500;
+        }
+        .btn-transferir {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border: none;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+        }
+        .btn-transferir:hover {
+            background: linear-gradient(135deg, #0069d9, #004a99);
+        }
+        .info-extra {
+            background: #f8f9fa;
+            border-radius: 0.8rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .saldo-disponible {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #28a745;
+        }
+    </style>
+</head>
+
+<body>
+    <section>
+        <!-- ====== ALERTAS ====== -->
+        <div th:if="${param.exito}" class="alert alert-success d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-check fs-5"></i>
+            <span th:text="${param.exito}">Operación exitosa</span>
+        </div>
+        <div th:if="${param.error}" class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-exclamation fs-5"></i>
+            <span th:text="${param.error}">Error en la operación</span>
+        </div>
+
+        <!-- ====== ENCABEZADO ====== -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-6 fw-bold text-primary">
+                    <i class="fas fa-money-bill-transfer me-2"></i>Transferencias
+                </h1>
+                <p class="text-muted">Realiza transferencias a otras cuentas CLABE de forma segura y rápida.</p>
+                <hr>
+            </div>
+        </div>
+
+        <!-- ====== FORMULARIO ====== -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card card-transferencia">
+                    <div class="card-header">
+                        <h5><i class="fas fa-arrow-right me-2"></i>Nueva Transferencia</h5>
+                    </div>
+                    <div class="card-body p-4">
+
+                        <!-- Mostrar saldo de la cuenta principal -->
+                        <div th:if="${not #lists.isEmpty(cuentas)}" class="mb-4">
+                            <div class="alert alert-light border">
+                                <strong>Saldo disponible:</strong>
+                                <span class="saldo-disponible" 
+                                      th:text="'$ ' + ${#numbers.formatDecimal(cuentas[0].saldo, 1, 'COMMA', 2, 'POINT')}">
+                                    $0.00
+                                </span>
+                                <br>
+                                <small class="text-muted">Cuenta: <span th:text="${cuentas[0].clabe}">CLABE</span></small>
+                            </div>
+                        </div>
+
+                        <form th:action="@{/procesar-transferencia}" method="post">
+                            <!-- CLABE Destino -->
+                            <div class="mb-4">
+                                <label for="clabeDestino" class="form-label fw-bold">Cuenta destino (CLABE)</label>
+                                <input type="text" class="form-control form-control-lg" id="clabeDestino" 
+                                       name="clabeDestino" placeholder="Ej: 646180987654321098" 
+                                       pattern="[0-9]{18}" title="Debe tener 18 dígitos" required>
+                                <div class="form-text">Ingresa los 18 dígitos de la CLABE de destino.</div>
+                            </div>
+
+                            <!-- Monto -->
+                            <div class="mb-4">
+                                <label for="monto" class="form-label fw-bold">Monto</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0.01" class="form-control form-control-lg" 
+                                           id="monto" name="monto" placeholder="Ej: 500.00" required>
+                                </div>
+                            </div>
+
+                            <!-- Descripción (opcional) -->
+                            <div class="mb-4">
+                                <label for="descripcion" class="form-label fw-bold">Descripción (opcional)</label>
+                                <input type="text" class="form-control" id="descripcion" 
+                                       name="descripcion" placeholder="Motivo de la transferencia">
+                            </div>
+
+                            <!-- Botón enviar -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-transferir btn-lg">
+                                    <i class="fas fa-paper-plane me-2"></i>Transferir
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Información adicional -->
+                        <div class="info-extra">
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <i class="fas fa-shield-alt text-primary fs-3"></i>
+                                    <p class="mb-0 small">Transferencias seguras</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <i class="fas fa-clock text-success fs-3"></i>
+                                    <p class="mb-0 small">Confirmación inmediata</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <i class="fas fa-history text-warning fs-3"></i>
+                                    <p class="mb-0 small">Registro de movimientos</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== INFORMACIÓN ADICIONAL ====== -->
+        <div class="row mt-4">
+            <div class="col-12 text-center text-muted small">
+                <p>¿Problemas? Contáctanos al <strong>800-123-4567</strong> o visita nuestra sucursal.</p>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

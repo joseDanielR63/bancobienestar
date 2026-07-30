@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout('Administración de Movimientos', ~{::section})}">
+
+<head>
+    <title>Administrar Movimientos</title>
+    <style>
+        .badge-estado {
+            padding: 0.3rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-estado.autorizado { background: #d4edda; color: #155724; }
+        .badge-estado.pendiente { background: #fff3cd; color: #856404; }
+        .badge-estado.rechazado { background: #f8d7da; color: #721c24; }
+        .btn-accion { padding: 0.2rem 0.8rem; font-size: 0.75rem; border-radius: 2rem; }
+        .btn-accion.editar { background: #ffc107; color: #212529; border: none; }
+        .btn-accion.editar:hover { background: #e0a800; }
+        .btn-accion.eliminar { background: #dc3545; color: white; border: none; }
+        .btn-accion.eliminar:hover { background: #c82333; }
+        .table th { font-weight: 600; color: #1e3c72; }
+        .card { border-radius: 1rem; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
+    </style>
+</head>
+
+<body>
+    <section>
+
+        <!-- ====== ALERTAS ====== -->
+        <div th:if="${param.error}" class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+            <span th:text="${param.error}">Error en la solicitud.</span>
+        </div>
+        <div th:if="${param.exito}" class="alert alert-success d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-check fs-5"></i>
+            <span th:text="${param.exito}">Operación completada con éxito.</span>
+        </div>
+
+        <!-- ====== TÍTULO Y FILTRO ====== -->
+        <div class="row align-items-center mb-4">
+            <div class="col-md-6">
+                <h2 class="fw-bold text-primary"><i class="fas fa-exchange-alt me-2"></i>Movimientos de Clientes</h2>
+            </div>
+            <div class="col-md-6">
+                <form th:action="@{/admin/movimientos}" method="get" class="d-flex gap-2 justify-content-md-end">
+                    <select name="cliente" class="form-select form-select-sm w-auto">
+                        <option value="">Todos los clientes</option>
+                        <option th:each="c : ${clientes}" th:value="${c.username}" th:text="${c.nombre + ' (' + c.username + ')'}"
+                                th:selected="${c.username == clienteFiltro}">Cliente</option>
+                    </select>
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
+                    <a th:href="@{/admin/movimientos}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                </form>
+            </div>
+        </div>
+
+        <!-- ====== TABLA DE MOVIMIENTOS ====== -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cuenta Origen</th>
+                                <th>Cuenta Destino</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="mov : ${movimientos}">
+                                <td th:text="${#temporals.format(mov.fecha, 'dd/MM/yyyy HH:mm')}">01/01/2026 12:00</td>
+                                <td th:text="${mov.cuentaOrigen}">origen</td>
+                                <td th:text="${mov.cuentaDestino}">destino</td>
+                                <td th:text="${mov.descripcion}">descripción</td>
+                                <td th:classappend="${mov.monto >= 0 ? 'text-success' : 'text-danger'}"
+                                    th:text="${#numbers.formatDecimal(mov.monto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td th:text="${mov.tipo}">tipo</td>
+                                <td>
+                                    <span class="badge-estado"
+                                          th:classappend="${mov.estadoMovimiento == 'autorizado'} ? 'autorizado' : (${mov.estadoMovimiento == 'pendiente'} ? 'pendiente' : 'rechazado')"
+                                          th:text="${mov.estadoMovimiento}">autorizado</span>
+                                </td>
+                                <td>
+                                    <!-- Botón para cambiar estado (modal) -->
+                                    <button class="btn btn-accion editar btn-sm" data-bs-toggle="modal"
+                                            data-bs-target="#modalEditarEstado"
+                                            th:data-id="${mov.id}"
+                                            th:data-estado="${mov.estadoMovimiento}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <!-- Botón eliminar -->
+                                    <form th:action="@{/admin/movimientos/eliminar/{id}(id=${mov.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-accion eliminar btn-sm" onclick="return confirm('¿Eliminar este movimiento?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(movimientos)}">
+                                <td colspan="8" class="text-center text-muted py-4">No hay movimientos registrados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== MODAL PARA CAMBIAR ESTADO (CORREGIDO) ====== -->
+        <div class="modal fade" id="modalEditarEstado" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Cambiar Estado del Movimiento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <!-- ✅ CORREGIDO: acción fija, sin {id} en la URL -->
+                    <form th:action="@{/admin/movimientos/actualizar}" method="post">
+                        <!-- ✅ El id se envía como campo oculto -->
+                        <input type="hidden" id="editId" name="id">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Nuevo Estado</label>
+                                <select class="form-select" id="editEstadoSelect" name="nuevoEstado">
+                                    <option value="autorizado">Autorizado</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="rechazado">Rechazado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== SCRIPT PARA LLENAR MODAL ====== -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var modal = document.getElementById('modalEditarEstado');
+                modal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var id = button.getAttribute('data-id');
+                    var estado = button.getAttribute('data-estado');
+                    // Asignar valores al campo oculto y al select
+                    modal.querySelector('#editId').value = id;
+                    modal.querySelector('#editEstadoSelect').value = estado;
+                });
+            });
+        </script>
+
+    </section>
+</body>
+</html>

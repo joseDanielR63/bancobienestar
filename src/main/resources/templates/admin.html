@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout('Panel Administrador Ejecutivo', ~{::section})}">
+
+<head>
+    <title>Panel Ejecutivo</title>
+    <!-- Chart.js para gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <section>
+        <!-- ====== ESTILOS ====== -->
+        <style>
+            .badge-estado { padding: 0.3rem 0.8rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600; }
+            .badge-estado.aprobado { background: #d4edda; color: #155724; }
+            .badge-estado.pendiente { background: #fff3cd; color: #856404; }
+            .badge-estado.rechazado { background: #f8d7da; color: #721c24; }
+            
+            .btn-accion { padding: 0.2rem 0.8rem; font-size: 0.75rem; border-radius: 2rem; font-weight: 600; }
+            .btn-accion.aprobar { background: #28a745; color: white; border: none; }
+            .btn-accion.aprobar:hover { background: #218838; }
+            .btn-accion.rechazar { background: #dc3545; color: white; border: none; }
+            .btn-accion.rechazar:hover { background: #c82333; }
+            .btn-accion:disabled { opacity: 0.5; cursor: not-allowed; }
+
+            .nav-pills .nav-link { color: #1e3c72; font-weight: 500; border-radius: 0.5rem; }
+            .nav-pills .nav-link.active { background: #1e3c72; color: white; }
+            .nav-pills .nav-link:hover:not(.active) { background: #e9ecef; }
+
+            .contenido-seccion { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+            
+            .btn-pdf { transition: all 0.3s; }
+            .btn-pdf:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4); }
+            
+            .card-estadistica {
+                border-radius: 1rem;
+                border: none;
+                transition: all 0.3s;
+                cursor: default;
+            }
+            .card-estadistica:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+            .card-estadistica .icono { font-size: 2.5rem; opacity: 0.7; }
+            
+            .chart-container {
+                position: relative;
+                height: 250px;
+                width: 100%;
+            }
+        </style>
+
+        <!-- ====== ALERTAS ====== -->
+        <div th:if="${param.exito}" class="alert alert-success d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-check fs-5"></i>
+            <span th:text="${param.exito}">Operación exitosa</span>
+        </div>
+        <div th:if="${param.error}" class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="fa-solid fa-circle-exclamation fs-5"></i>
+            <span th:text="${param.error}">Error en la operación</span>
+        </div>
+
+        <!-- ====== ENCABEZADO ====== -->
+        <div class="row align-items-center mb-4">
+            <div class="col-12 col-md-8">
+                <h2 class="display-6 fw-bold text-primary mb-2">
+                    <i class="fas fa-user-tie me-2"></i>Panel Administrador
+                </h2>
+                <p class="text-muted mb-0">Gestión de cartera de clientes, créditos y movimientos.</p>
+            </div>
+            <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                <span class="badge bg-warning text-dark px-3 py-2 fw-bold text-uppercase rounded-pill shadow-sm">
+                    <i class="fa-solid fa-user-shield me-1"></i>
+                    Sesión: <span th:text="${#authentication.getName()}"></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- ====== MENÚ LATERAL + CONTENIDO ====== -->
+        <div class="row">
+            <!-- Menú lateral -->
+            <div class="col-md-3 mb-4">
+                <div class="nav flex-column nav-pills" role="tablist" aria-orientation="vertical">
+                    <a class="nav-link" th:classappend="${seccion == 'clientes'} ? 'active'" href="/admin/clientes">
+                        <i class="fas fa-users me-2"></i> Clientes
+                        <span class="badge bg-secondary ms-2" th:text="${totalClientes != null ? totalClientes : 0}">0</span>
+                    </a>
+                    <a class="nav-link" th:classappend="${seccion == 'creditos'} ? 'active'" href="/admin/creditos">
+                        <i class="fas fa-hand-holding-dollar me-2"></i> Créditos
+                        <span class="badge bg-warning ms-2" th:text="${solicitudesPendientes != null ? solicitudesPendientes : 0}">0</span>
+                    </a>
+                    <a class="nav-link" th:classappend="${seccion == 'movimientos'} ? 'active'" href="/admin/movimientos">
+                        <i class="fas fa-exchange-alt me-2"></i> Movimientos
+                    </a>
+                </div>
+            </div>
+
+            <!-- Contenido dinámico según la sección -->
+            <div class="col-md-9">
+                <div class="contenido-seccion">
+                    
+                    <!-- ============================================================ -->
+                    <!-- SECCIÓN CLIENTES -->
+                    <!-- ============================================================ -->
+                    <div th:if="${seccion == 'clientes'}">
+                        <!-- Tarjetas de estadísticas -->
+                        <div class="row mb-4">
+                            <div class="col-md-4 mb-3">
+                                <div class="card card-estadistica bg-primary text-white">
+                                    <div class="card-body d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-white-50">Total Clientes</h6>
+                                            <h2 class="mb-0" th:text="${totalClientes != null ? totalClientes : 0}">0</h2>
+                                        </div>
+                                        <div class="icono"><i class="fas fa-users"></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card card-estadistica bg-success text-white">
+                                    <div class="card-body d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-white-50">Créditos Aprobados</h6>
+                                            <h2 class="mb-0" th:text="${solicitudesAprobadas != null ? solicitudesAprobadas : 0}">0</h2>
+                                        </div>
+                                        <div class="icono"><i class="fas fa-check-circle"></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card card-estadistica bg-warning text-dark">
+                                    <div class="card-body d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-dark-50">Pendientes</h6>
+                                            <h2 class="mb-0" th:text="${solicitudesPendientes != null ? solicitudesPendientes : 0}">0</h2>
+                                        </div>
+                                        <div class="icono"><i class="fas fa-clock"></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold"><i class="fas fa-users me-2"></i>Lista de Clientes</h5>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRegistrarCliente">
+                                <i class="fas fa-user-plus"></i> Registrar Cliente
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>Nombre</th>
+                                        <th>Cuentas</th>
+                                        <th>Saldo Total</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="c : ${clientes}">
+                                        <td th:text="${c.id}">1</td>
+                                        <td><strong th:text="${c.username}">cliente1</strong></td>
+                                        <td th:text="${c.nombre}">Nombre</td>
+                                        <td th:text="${#lists.size(c.cuentas)}">0</td>
+                                        <td>$ <span th:text="${#numbers.formatDecimal(#aggregates.sum(c.cuentas.![saldo]), 1, 'COMMA', 2, 'POINT')}">0.00</span></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                                                        data-bs-target="#modalEditarCliente"
+                                                        th:data-id="${c.id}"
+                                                        th:data-username="${c.username}"
+                                                        th:data-nombre="${c.nombre}">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                
+                                                <!-- PDF Estado de Cuenta -->
+                                                <a th:href="@{/admin/pdf/estado-cuenta/{id}(id=${c.id})}" 
+                                                   class="btn btn-outline-success btn-sm btn-pdf" 
+                                                   target="_blank"
+                                                   title="Generar PDF de estado de cuenta">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </a>
+                                                
+                                                <form th:action="@{/admin/clientes/eliminar/{id}(id=${c.id})}" method="post" style="display:inline;">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar cliente?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(clientes)}">
+                                        <td colspan="6" class="text-center text-muted">No hay clientes registrados</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================ -->
+                    <!-- SECCIÓN CRÉDITOS -->
+                    <!-- ============================================================ -->
+                    <div th:if="${seccion == 'creditos'}">
+                        <!-- Gráfica de estado de créditos -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold mb-3"><i class="fas fa-chart-pie me-2"></i>Distribución de Créditos</h6>
+                                        <div class="chart-container">
+                                            <canvas id="creditosChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2"></i>Resumen</h6>
+                                        <div class="d-flex justify-content-between py-2 border-bottom">
+                                            <span><span class="badge bg-warning me-2">●</span> Pendientes</span>
+                                            <span class="fw-bold" th:text="${solicitudesPendientes != null ? solicitudesPendientes : 0}">0</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between py-2 border-bottom">
+                                            <span><span class="badge bg-success me-2">●</span> Aprobados</span>
+                                            <span class="fw-bold" th:text="${solicitudesAprobadas != null ? solicitudesAprobadas : 0}">0</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between py-2">
+                                            <span><span class="badge bg-danger me-2">●</span> Rechazados</span>
+                                            <span class="fw-bold" th:text="${solicitudesRechazadas != null ? solicitudesRechazadas : 0}">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Solicitudes de Crédito</h5>
+                            <div>
+                                <a th:href="@{/admin/creditos}" class="btn btn-outline-secondary btn-sm">Todos</a>
+                                <a th:href="@{/admin/creditos(estado='PENDIENTE')}" class="btn btn-outline-warning btn-sm">Pendientes</a>
+                                <a th:href="@{/admin/creditos(estado='APROBADO')}" class="btn btn-outline-success btn-sm">Aprobados</a>
+                                <a th:href="@{/admin/creditos(estado='RECHAZADO')}" class="btn btn-outline-danger btn-sm">Rechazados</a>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Cliente</th>
+                                        <th>Monto</th>
+                                        <th>Fecha</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="s : ${solicitudes}">
+                                        <td th:text="${s.id}">1</td>
+                                        <td th:text="${s.usuario.username}">cliente1</td>
+                                        <td>$ <span th:text="${#numbers.formatDecimal(s.montoSolicitado, 1, 'COMMA', 2, 'POINT')}">0.00</span></td>
+                                        <td th:text="${#temporals.format(s.fecha, 'dd/MM/yyyy HH:mm')}">01/01/2026</td>
+                                        <td>
+                                            <span class="badge-estado"
+                                                  th:classappend="${s.estado == 'APROBADO'} ? 'aprobado' : (${s.estado == 'PENDIENTE'} ? 'pendiente' : 'rechazado')"
+                                                  th:text="${s.estado}">PENDIENTE</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <div th:if="${s.estado == 'PENDIENTE'}" class="d-flex gap-1">
+                                                    <form th:action="@{/admin/cambiar-estado}" method="post" style="display:inline;">
+                                                        <input type="hidden" name="solicitudId" th:value="${s.id}">
+                                                        <input type="hidden" name="nuevoEstado" value="APROBADO">
+                                                        <button type="submit" class="btn btn-accion aprobar btn-sm"><i class="fas fa-check me-1"></i>Aprobar</button>
+                                                    </form>
+                                                    <form th:action="@{/admin/cambiar-estado}" method="post" style="display:inline;">
+                                                        <input type="hidden" name="solicitudId" th:value="${s.id}">
+                                                        <input type="hidden" name="nuevoEstado" value="RECHAZADO">
+                                                        <button type="submit" class="btn btn-accion rechazar btn-sm"><i class="fas fa-times me-1"></i>Rechazar</button>
+                                                    </form>
+                                                </div>
+                                                
+                                                <!-- PDF Contrato (solo si está aprobado) -->
+                                                <a th:if="${s.estado == 'APROBADO'}" 
+                                                   th:href="@{/admin/pdf/contrato/{id}(id=${s.id})}" 
+                                                   class="btn btn-outline-success btn-sm btn-pdf" 
+                                                   target="_blank"
+                                                   title="Ver contrato PDF">
+                                                    <i class="fas fa-file-pdf"></i> Contrato
+                                                </a>
+                                                
+                                                <form th:action="@{/admin/creditos/eliminar/{id}(id=${s.id})}" method="post" style="display:inline;">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar crédito?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(solicitudes)}">
+                                        <td colspan="6" class="text-center text-muted">No hay solicitudes de crédito</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================ -->
+                    <!-- SECCIÓN MOVIMIENTOS -->
+                    <!-- ============================================================ -->
+                    <div th:if="${seccion == 'movimientos'}">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold"><i class="fas fa-exchange-alt me-2"></i>Movimientos de Clientes</h5>
+                            <form th:action="@{/admin/movimientos}" method="get" class="d-flex gap-2">
+                                <select name="cliente" class="form-select form-select-sm">
+                                    <option value="">Todos los clientes</option>
+                                    <option th:each="c : ${clientes}" th:value="${c.username}" th:text="${c.nombre + ' (' + c.username + ')'}"
+                                            th:selected="${c.username == clienteFiltro}">Cliente</option>
+                                </select>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
+                            </form>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Cliente (Cuenta)</th>
+                                        <th>Descripción</th>
+                                        <th>Monto</th>
+                                        <th>Tipo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="mov : ${movimientos}">
+                                        <td th:text="${#temporals.format(mov.fecha, 'dd/MM/yyyy HH:mm')}">01/01/2026</td>
+                                        <td>
+                                            <span th:if="${mov.cuentaOrigen != 'CRÉDITO-BANCO'}">
+                                                <span th:text="${mov.cuentaOrigen}"></span>
+                                            </span>
+                                            <span th:if="${mov.cuentaOrigen == 'CRÉDITO-BANCO'}">
+                                                Crédito → <span th:text="${mov.cuentaDestino}"></span>
+                                            </span>
+                                        </td>
+                                        <td th:text="${mov.descripcion}">Descripción</td>
+                                        <td th:classappend="${mov.monto >= 0 ? 'text-success' : 'text-danger'}"
+                                            th:text="${#numbers.formatDecimal(mov.monto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                        <td th:text="${mov.tipo}">Tipo</td>
+                                        <td><span class="badge bg-info" th:text="${mov.estadoMovimiento}">autorizado</span></td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(movimientos)}">
+                                        <td colspan="6" class="text-center text-muted">No hay movimientos registrados</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== MODAL REGISTRAR CLIENTE ====== -->
+        <div class="modal fade" id="modalRegistrarCliente" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Registrar Nuevo Cliente</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form th:action="@{/admin/crear-cliente}" method="post">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Nombre de Usuario</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="nombre" class="form-label">Nombre Completo</label>
+                                <input type="text" class="form-control" id="nombre" name="nombre">
+                            </div>
+                            <div class="mb-3">
+                                <label for="saldoInicial" class="form-label">Saldo Inicial</label>
+                                <input type="number" step="0.01" class="form-control" id="saldoInicial" name="saldoInicial" value="0.00" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Crear Cliente</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== MODAL EDITAR CLIENTE ====== -->
+        <div class="modal fade" id="modalEditarCliente" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-user-edit me-2"></i>Editar Cliente</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form th:action="@{/admin/clientes/actualizar}" method="post">
+                        <input type="hidden" id="editId" name="id">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="editNombre" name="nombre" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Nueva Contraseña (opcional)</label>
+                                <input type="password" class="form-control" id="editPassword" name="password" placeholder="Dejar en blanco para no cambiar">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== SCRIPT PARA LLENAR MODAL DE EDICIÓN Y GRÁFICAS ====== -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Modal Editar Cliente
+                var modalEditar = document.getElementById('modalEditarCliente');
+                modalEditar.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var id = button.getAttribute('data-id');
+                    var username = button.getAttribute('data-username');
+                    var nombre = button.getAttribute('data-nombre');
+                    modalEditar.querySelector('#editId').value = id;
+                    modalEditar.querySelector('#editNombre').value = nombre;
+                });
+                
+                // Auto-cerrar alertas después de 5 segundos
+                setTimeout(function() {
+                    var alerts = document.querySelectorAll('.alert');
+                    alerts.forEach(function(alert) {
+                        alert.style.transition = 'opacity 0.5s';
+                        alert.style.opacity = '0';
+                        setTimeout(function() {
+                            alert.remove();
+                        }, 500);
+                    });
+                }, 5000);
+                
+                // ====== GRÁFICA DE CRÉDITOS ======
+                var ctx = document.getElementById('creditosChart');
+                if (ctx) {
+                    // Obtener valores de Thymeleaf
+                    var pendientes = parseInt('[[${solicitudesPendientes != null ? solicitudesPendientes : 0}]]') || 0;
+                    var aprobados = parseInt('[[${solicitudesAprobadas != null ? solicitudesAprobadas : 0}]]') || 0;
+                    var rechazados = parseInt('[[${solicitudesRechazadas != null ? solicitudesRechazadas : 0}]]') || 0;
+                    
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Pendientes', 'Aprobados', 'Rechazados'],
+                            datasets: [{
+                                data: [pendientes, aprobados, rechazados],
+                                backgroundColor: ['#ffc107', '#28a745', '#dc3545'],
+                                borderWidth: 2,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 20,
+                                        usePointStyle: true,
+                                        pointStyle: 'circle'
+                                    }
+                                }
+                            },
+                            cutout: '65%'
+                        }
+                    });
+                }
+            });
+        </script>
+
+    </section>
+</body>
+</html>
